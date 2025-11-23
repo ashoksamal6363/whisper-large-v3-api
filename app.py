@@ -1,48 +1,42 @@
-import os
-import torch
 import gradio as gr
 from transformers import pipeline
+import torch
 
-MODEL_NAME = "openai/whisper-large-v3"
-BATCH_SIZE = 8
+# Force HF cache into writable directory for OpenShift
+import os
+os.environ["HF_HOME"] = "/tmp/hf_cache"
 
 device = 0 if torch.cuda.is_available() else "cpu"
-
 pipe = pipeline(
-    task="automatic-speech-recognition",
-    model=MODEL_NAME,
-    chunk_length_s=30,
-    device=device,
+    "automatic-speech-recognition",
+    model="openai/whisper-large-v3",
+    torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+    device=device
 )
 
-def transcribe(inputs, task):
-    if inputs is None:
-        raise gr.Error(
-            "No audio file submitted! Please upload or record an audio file before submitting your request."
-        )
-    out = pipe(
-        inputs,
-        batch_size=BATCH_SIZE,
-        generate_kwargs={"task": task},    # "transcribe" or "translate"
-        return_timestamps=True,
-    )
-    return out["text"]
+def transcribe(audio):
+    text = pipe(audio)["text"]
+    return text
 
-demo = gr.Interface(
-    fn=transcribe,
-    inputs=[
-        gr.Audio(type="filepath", label="Audio"),
-        gr.Radio(["transcribe", "translate"], label="Task", value="transcribe"),
-    ],
-    outputs=gr.Textbox(lines=10, label="output"),
-    title="Whisper Large V3: Transcribe Audio",
-    description=(
-        "Transcribe long-form microphone or audio inputs with the click of a button! "
-        f"Demo uses the OpenAI Whisper checkpoint [{MODEL_NAME}] and Transformers."
-    ),
-    allow_flagging="never",
-)
+with gr.Blocks() as demo:
+    gr.Markdown("# Whisper Large V3 – Transcribe Audio")
+    audio_input = gr.Audio(type="filepath", label="Upload Audio")
+    output_text = gr.Textbox(label="Transcription")
+    btn = gr.Button("Transcribe")
+    btn.click(fn=transcribe, inputs=audio_input, outputs=output_text)
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "7860"))
-    demo.launch(server_name="0.0.0.0", server_port=port)
+# Expose UI & API
+app = demo
+fastapi_app = demo.server_app
+
+@fastapi_app.post("/transcribe")
+async def api_transcribe(file: bytes):
+    import tempfile
+    import uuid
+
+    tmp = f"/tmp/{uuid.uuid4()}.wav"
+    with open(tmp, "wb") as f:
+        f.write(file)
+
+    result = pipe(tmp)["text"]
+    return {"text": result}

@@ -1,5 +1,5 @@
+gradio==4.12.0
+transformers==4.39.3
+accelerate
 torch
-transformers
-gradio
-spaces
-yt-dlp
+ffmpeg-python
