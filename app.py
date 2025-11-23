@@ -25,7 +25,7 @@ LLAMA_URL = os.getenv(
     "https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com/v1/chat/completions",
 )
 LLAMA_TOKEN = os.getenv("LLAMA_TOKEN", "")  # set this in the deployment
-LLAMA_MODEL = os.getenv("LLAMA_MODEL", "llama-3.1-8b-instruct")
+LLAMA_MODEL = os.getenv("LLAMA_MODEL", "redhataillama-31-8b-instruct3")
 
 
 def translate_to_english(arabic_text: str) -> str:
@@ -34,7 +34,7 @@ def translate_to_english(arabic_text: str) -> str:
         return ""
 
     payload = {
-        "model": LLAMA_MODEL,
+        "model": LLAMA_MODEL,   # now resolves to redhataillama-31-8b-instruct3
         "messages": [
             {
                 "role": "system",
