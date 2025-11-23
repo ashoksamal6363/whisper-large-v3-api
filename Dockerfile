@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir \
     "uvicorn[standard]" \
     soundfile \
     openai-whisper \
-    python-multipart          # ← added
+    python-multipart \
+    requests
 
 COPY app.py .
 
