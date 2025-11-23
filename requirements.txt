@@ -1,6 +1,5 @@
-fastapi
-uvicorn[standard]
-openai-whisper
 torch
-numpy
-soundfile
+git+https://github.com/huggingface/transformers
+gradio
+spaces
+yt-dlp
