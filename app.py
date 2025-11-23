@@ -21,8 +21,7 @@ model = whisper.load_model(WHISPER_MODEL_NAME, device=device)
 # --------- Llama endpoint config (Arabic -> English) ----------
 
 LLAMA_URL = os.getenv(
-    "LLAMA_URL",
-    "https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com,
+    "LLAMA_URL","https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com/v1/chat/completions",
 )
 LLAMA_TOKEN = os.getenv("LLAMA_TOKEN", "sha256~5DlvevZJury0P0CMJddlK2yNPgt9Qq9lSTmrLr7EJ0w")  # set this in the deployment
 LLAMA_MODEL = os.getenv("LLAMA_MODEL", "redhataillama-31-8b-instruct3")
