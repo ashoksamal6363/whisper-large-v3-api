@@ -1,6 +1,7 @@
 import io
 import os
 import tempfile
+import json  # <-- IMPORTANT
 
 import requests
 import soundfile as sf
@@ -15,19 +16,22 @@ app = FastAPI()
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL", "medium")  # change to large-v3 if you want
+WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL", "medium")  # or "large-v3"
 model = whisper.load_model(WHISPER_MODEL_NAME, device=device)
 
 # --------- Llama endpoint config (Arabic -> English) ----------
 
 BASE_URL = "https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com"
 MODEL_ENDPOINT = f"{BASE_URL}/v1/chat/completions"
-TOKEN = "sha256~5DlvevZJury0P0CMJddlK2yNPgt9Qq9lSTmrLr7EJ0w"   # replace with new token
+LLAMA_MODEL = "redhataillama-31-8b-instruct3"
+
+TOKEN = os.getenv("LLAMA_TOKEN", "")  # set this in env instead of hardcoding
 
 headers = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {TOKEN}"
 }
+
 
 def translate_to_english(arabic_text: str) -> str:
     """Call Llama endpoint (OpenAI chat-compatible) to translate Arabic text to English."""
@@ -35,27 +39,28 @@ def translate_to_english(arabic_text: str) -> str:
         return ""
 
     payload = {
-        "model": "redhataillama-31-8b-instruct3",
-
+        "model": LLAMA_MODEL,
         "messages": [
             {
                 "role": "system",
-                "content": "You are a translation engine. You translate ONLY from Arabic to English. You never reply in Arabic."
+                "content": (
+                    "You are a translation engine. "
+                    "Translate ONLY from Arabic to English. "
+                    "Reply only in English."
+                ),
             },
             {
                 "role": "user",
-                "content": f"Translate to English:\n\n{arabic_text}"
-            }
+                "content": f"Translate to English:\n\n{arabic_text}",
+            },
         ],
-
-        "temperature": 0
+        "temperature": 0,
     }
 
-    resp = requests.post(MODEL_ENDPOINT, headers=headers, data=json.dumps(payload))
+    resp = requests.post(MODEL_ENDPOINT, headers=headers, data=json.dumps(payload), timeout=60)
 
-    # For debugging 4xx errors, don't just raise blindly
     if resp.status_code >= 400:
-        # return the raw Llama error text so you can see the true reason
+        # surface the real server error in the API response
         raise RuntimeError(f"Llama error {resp.status_code}: {resp.text}")
 
     data = resp.json()
@@ -69,7 +74,7 @@ def health():
         "status": "ok",
         "device": device,
         "whisper_model": WHISPER_MODEL_NAME,
-        "llama_url": LLAMA_URL,
+        "llama_url": MODEL_ENDPOINT,
         "llama_model": LLAMA_MODEL,
     }
 
@@ -110,7 +115,6 @@ async def transcribe(file: UploadFile = File(...)):
         try:
             english_text = translate_to_english(arabic_text)
         except Exception as e:
-            # Do not fail the whole request if translation fails; just return error info
             translation_error = str(e)
 
         response = {
