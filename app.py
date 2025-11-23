@@ -20,15 +20,14 @@ model = whisper.load_model(WHISPER_MODEL_NAME, device=device)
 
 # --------- Llama endpoint config (Arabic -> English) ----------
 
-LLAMA_URL = os.getenv(
-    "LLAMA_URL",
-    "https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com/v1/chat/completions",
-)
+BASE_URL = "https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com"
+MODEL_ENDPOINT = f"{BASE_URL}/v1/chat/completions"
+TOKEN = "sha256~5DlvevZJury0P0CMJddlK2yNPgt9Qq9lSTmrLr7EJ0w"   # replace with new token
 
-LLAMA_TOKEN = os.getenv("LLAMA_TOKEN", "")
-LLAMA_MODEL = os.getenv("LLAMA_MODEL", "redhataillama-31-8b-instruct3")
-
-
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {TOKEN}"
+}
 
 def translate_to_english(arabic_text: str) -> str:
     """Call Llama endpoint (OpenAI chat-compatible) to translate Arabic text to English."""
@@ -36,26 +35,23 @@ def translate_to_english(arabic_text: str) -> str:
         return ""
 
     payload = {
-        "model": LLAMA_MODEL,
+        "model": "redhataillama-31-8b-instruct3",
+
         "messages": [
             {
                 "role": "system",
-                "content": "You are a translation assistant that translates Arabic into clear, natural English.",
+                "content": "You are a translation engine. You translate ONLY from Arabic to English. You never reply in Arabic."
             },
             {
                 "role": "user",
-                "content": f"Translate this Arabic text to English:\n\n{arabic_text}",
-            },
+                "content": f"Translate to English:\n\n{arabic_text}"
+            }
         ],
-        "temperature": 0.0,
-        "max_tokens": 512,
+
+        "temperature": 0
     }
 
-    headers = {"Content-Type": "application/json"}
-    if LLAMA_TOKEN:
-        headers["Authorization"] = f"Bearer {LLAMA_TOKEN}"
-
-    resp = requests.post(LLAMA_URL, json=payload, headers=headers, timeout=60)
+    resp = requests.post(MODEL_ENDPOINT, headers=headers, data=json.dumps(payload))
 
     # For debugging 4xx errors, don't just raise blindly
     if resp.status_code >= 400:
