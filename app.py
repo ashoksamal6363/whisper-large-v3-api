@@ -21,7 +21,7 @@ model = whisper.load_model(WHISPER_MODEL_NAME, device=device)
 # --------- Llama endpoint config (Arabic -> English) ----------
 
 LLAMA_URL = os.getenv(
-    "LLAMA_URL","https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com/v1/chat/completions",
+    "LLAMA_URL","https://redhataillama-31-8b-instruct3-llama-stack.apps.cluster-gltrd.gltrd.sandbox2574.opentlc.com/v1/predictions",
 )
 LLAMA_TOKEN = os.getenv("LLAMA_TOKEN", "sha256~5DlvevZJury0P0CMJddlK2yNPgt9Qq9lSTmrLr7EJ0w")  # set this in the deployment
 LLAMA_MODEL = os.getenv("LLAMA_MODEL", "redhataillama-31-8b-instruct3")
@@ -33,19 +33,12 @@ def translate_to_english(arabic_text: str) -> str:
         return ""
 
     payload = {
-        "model": LLAMA_MODEL,   # now resolves to redhataillama-31-8b-instruct3
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a translation assistant that translates Arabic into clear, natural English.",
-            },
-            {
-                "role": "user",
-                "content": f"Translate this Arabic text to English:\n\n{arabic_text}",
-            },
-        ],
-        "temperature": 0.0,
-        "max_tokens": 512,
+        "model": LLAMA_MODEL,
+        "input": f"Translate this Arabic text to English:\n\n{arabic_text}",
+        "parameters": {
+            "temperature": 0.0,
+            "max_new_tokens": 512
+        }
     }
 
     # Adjust headers to match how your Llama endpoint is secured.
