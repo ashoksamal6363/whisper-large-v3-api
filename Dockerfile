@@ -8,10 +8,8 @@ RUN apt-get update && apt-get install -y \
     git \
  && rm -rf /var/lib/apt/lists/*
 
-# NEW: create writable cache dir
 RUN mkdir -p /models && chmod -R 777 /models
 
-# NEW: tell Whisper / Torch / HF to use it
 ENV XDG_CACHE_HOME=/models
 ENV TORCH_HOME=/models
 ENV TRANSFORMERS_CACHE=/models
@@ -20,7 +18,8 @@ RUN pip install --no-cache-dir \
     fastapi \
     "uvicorn[standard]" \
     soundfile \
-    openai-whisper
+    openai-whisper \
+    python-multipart          # ← added
 
 COPY app.py .
 
