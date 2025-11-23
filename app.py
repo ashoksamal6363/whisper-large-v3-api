@@ -1,42 +1,37 @@
+import os
+import torch
 import gradio as gr
 from transformers import pipeline
-import torch
 
-# Force HF cache into writable directory for OpenShift
-import os
+# Hugging Face cache to writable dir
 os.environ["HF_HOME"] = "/tmp/hf_cache"
 
+MODEL_NAME = "openai/whisper-large-v3"
+
 device = 0 if torch.cuda.is_available() else "cpu"
+torch_dtype = torch.float16 if device != "cpu" else torch.float32
+
 pipe = pipeline(
     "automatic-speech-recognition",
-    model="openai/whisper-large-v3",
-    torch_dtype=torch.float16 if device != "cpu" else torch.float32,
-    device=device
+    model=MODEL_NAME,
+    torch_dtype=torch_dtype,
+    device=device,
+    chunk_length_s=30,
 )
 
 def transcribe(audio):
-    text = pipe(audio)["text"]
-    return text
+    if audio is None:
+        return ""
+    out = pipe(audio)
+    return out["text"]
 
 with gr.Blocks() as demo:
     gr.Markdown("# Whisper Large V3 – Transcribe Audio")
-    audio_input = gr.Audio(type="filepath", label="Upload Audio")
-    output_text = gr.Textbox(label="Transcription")
+    audio_in = gr.Audio(type="filepath", label="Upload audio")
+    task_out = gr.Textbox(label="Transcription / Translation", lines=8)
     btn = gr.Button("Transcribe")
-    btn.click(fn=transcribe, inputs=audio_input, outputs=output_text)
+    btn.click(fn=transcribe, inputs=audio_in, outputs=task_out)
 
-# Expose UI & API
-app = demo
-fastapi_app = demo.server_app
-
-@fastapi_app.post("/transcribe")
-async def api_transcribe(file: bytes):
-    import tempfile
-    import uuid
-
-    tmp = f"/tmp/{uuid.uuid4()}.wav"
-    with open(tmp, "wb") as f:
-        f.write(file)
-
-    result = pipe(tmp)["text"]
-    return {"text": result}
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "7860"))
+    demo.launch(server_name="0.0.0.0", server_port=port)
