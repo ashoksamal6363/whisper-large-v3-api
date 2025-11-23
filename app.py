@@ -31,33 +31,38 @@ LLAMA_MODEL = os.getenv("LLAMA_MODEL", "redhataillama-31-8b-instruct3")
 
 
 def translate_to_english(arabic_text: str) -> str:
-    """Call Llama endpoint to translate Arabic text to English."""
+    """Call Llama endpoint (OpenAI chat-compatible) to translate Arabic text to English."""
     if not arabic_text.strip():
         return ""
 
     payload = {
         "model": LLAMA_MODEL,
-        "input": f"Translate this Arabic text to English:\n\n{arabic_text}",
-        "parameters": {
-            "temperature": 0.0,
-            "max_new_tokens": 512
-        }
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a translation assistant that translates Arabic into clear, natural English.",
+            },
+            {
+                "role": "user",
+                "content": f"Translate this Arabic text to English:\n\n{arabic_text}",
+            },
+        ],
+        "temperature": 0.0,
+        "max_tokens": 512,
     }
 
-    # Adjust headers to match how your Llama endpoint is secured.
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    # If your endpoint uses Bearer token auth
+    headers = {"Content-Type": "application/json"}
     if LLAMA_TOKEN:
         headers["Authorization"] = f"Bearer {LLAMA_TOKEN}"
 
     resp = requests.post(LLAMA_URL, json=payload, headers=headers, timeout=60)
-    resp.raise_for_status()
-    data = resp.json()
 
-    # OpenAI-style response structure
+    # For debugging 4xx errors, don't just raise blindly
+    if resp.status_code >= 400:
+        # return the raw Llama error text so you can see the true reason
+        raise RuntimeError(f"Llama error {resp.status_code}: {resp.text}")
+
+    data = resp.json()
     english = data["choices"][0]["message"]["content"].strip()
     return english
 
